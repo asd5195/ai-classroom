@@ -1,0 +1,8 @@
+'use strict';
+window.CourseKit={
+ esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));},
+ safeURL(s){if(typeof s!=='string'||!s.trim())return null;try{const u=new URL(s,location.href);return ['https:','http:'].includes(u.protocol)?u.href:null;}catch{return null;}},
+ validate(data){if(!data||data.version!==1||!Array.isArray(data.courses))throw Error('請匯入 version 為 1、包含 courses 的課程檔。');const ids=new Set();for(const c of data.courses){if(!c.id||typeof c.id!=='string'||!c.title?.trim()||!['published','upcoming','draft'].includes(c.status))throw Error('課程需有唯一 ID、標題與正確狀態。');if(ids.has(c.id))throw Error('課程 ID 不可重複。');ids.add(c.id);if(!Number.isFinite(c.order)||!Number.isFinite(c.minutes)||c.minutes<1)throw Error('堂次與課程分鐘數需為有效數字。');for(const k of ['tags','objectives','steps','exercises','resources'])if(!Array.isArray(c[k]))throw Error('課程缺少清單欄位：'+k);for(const k of ['tags','objectives'])if(c[k].some(v=>typeof v!=='string'))throw Error(k+' 項目需為文字。');for(const k of ['steps','exercises'])if(c[k].some(v=>typeof v.title!=='string'||typeof v.body!=='string'))throw Error(k+' 格式不正確。');for(const r of c.resources)if(typeof r.name!=='string'||!r.name.trim()||!this.safeURL(r.url))throw Error('教材需填寫名稱及有效的 http(s) 或相對路徑。');}return data;},
+ async load(){const r=await fetch('data/courses.json',{cache:'no-store'});if(!r.ok)throw Error('讀取課程失敗，請稍後重試。');return this.validate(await r.json());},
+ download(name,value){const u=URL.createObjectURL(new Blob([value],{type:'application/json;charset=utf-8'}));const a=document.createElement('a');a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),2000);}
+};
